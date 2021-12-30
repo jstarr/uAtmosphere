@@ -1,60 +1,65 @@
 # Complete project details at https://RandomNerdTutorials.com/micropython-bme680-esp32-esp8266/
 
-from machine import Pin, I2C
-from time import sleep
-from bme680 import *
+from formatting import *
+from socketPage import MySocket
 
-'''fmtFloat:
-    Format a floating point number and return a string
-    Parameters:
-        floatV - Floating point number to be formatted
-        places - Number of decimal places (default: 2)
 
-    returns a string from the floating point value rounded to the number
-    of deficmal places
-'''
-def fmtFloat(floatV, places=2):
-    return str(round(floatV, places))
+def web_page(fTemp, cTemp, sPressure, sHumidity, sGas, timeNow, dateNow):
+    """Create the HTML for the response to a http request
+    """
 
-'''fmtTemp:
-    Return the temperature in degrees Celcius or Farenheit as a formatted string
-    Paramteters:
-        temp - Temperature as a floating point value
-        units - C for Celcius or F for Farenheit (not case sensitive; default:'c')
-'''
-def fmtTemp(temp, units='c'):
-    if units.lower() != 'c':
-        temp = temp * (9/5) + 32
+    html = """<html><head><title>ESP with BME680</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,"><style>body { text-align: center; font-family: "Trebuchet MS", Arial;}
+    table { border-collapse: collapse; margin-left:auto; margin-right:auto; }
+    th { padding: 12px; background-color: #0043af; color: white; }
+    tr { border: 1px solid #ddd; padding: 12px; }
+    tr:hover { background-color: #bcbcbc; }
+    td { border: none; padding: 12px; }
+    .sensor { color:white; font-weight: bold; background-color: #bcbcbc; padding: 1px;
+    </style></head><body><h1>ESP with BME680</h1>
+    <h2>""" + dateNow + ' ' + timeNow + """</h2>
+    <table><tr><th>MEASUREMENT</th><th>VALUE</th></tr>
+    <tr><td>Temp. Celsius</td><td><span class="sensor">""" + cTemp + """</span></td></tr>
+    <tr><td>Temp. Fahrenheit</td><td><span class="sensor">""" + fTemp  + """</span></td></tr>
+    <tr><td>Pressure</td><td><span class="sensor">""" + sPressure + """ hPa</span></td></tr>
+    <tr><td>Humidity</td><td><span class="sensor">""" + sHumidity + """ %</span></td></tr>
+    <tr><td>Gas</td><td><span class="sensor">""" + sGas + """ KOhms</span></td></tr>
+    </table>
+    <form>
+        <input type='submit' value='Refresh'>
+    </form>
+    </body></html>
+    """
+    return html
 
-    return fmtFloat(temp, 2) + ' C'
 
-# ESP32 - Pin assignment
-i2c = I2C(scl=Pin(22), sda=Pin(21))
-# ESP8266 - Pin assignment
-#i2c = I2C(scl=Pin(5), sda=Pin(4))
-
+theSocket = MySocket(socket, gc, 80)
 bme = BME680_I2C(i2c=i2c)
 
 while True:
-  try:
-    temp = bme.temperature
-    temp = fmtTemp(temp, 'F')
-    #   Convert celsius to farenheit
-    # temp = (bme.temperature) * (9/5) + 32
-    # temp = str(round(temp, 2)) + 'F'
+    try:
+        conn, addr = theSocket.listen()
+        if (conn):
+            temp = bme.temperature
+            fTemp = fmtTemp(temp, 'F')
+            cTemp = fmtTemp(temp, 'C')
+            sPressure = fmtFloat(bme.pressure, 2)
+            sHumidity = fmtFloat(bme.humidity, 2)
+            sGas = fmtFloat(bme.gas/1000, 2)
+            timeNow = rtc.time()
+            dateNow = rtc.date()
 
-    hum = fmtFloat(bme.humidity, 2) + ' %'
+            print(20*'-', f'{dateNow}  {timeNow}', 20*'-')
+            print('Temp: ', fTemp)
+            print('Temp: ', cTemp)
+            print('Pressure: ', sPressure)
+            print('Humidity: ', sHumidity)
+            print('Gas: ', sGas)
+            print(20*'-')
 
-    pres = fmtFloat(bme.pressure, 2) + ' hPa'
 
-    gas = fmtFloat(bme.gas/1000, 2) + ' KOhms'
-
-    print('Temperature:', temp)
-    print('Humidity:', hum)
-    print('Pressure:', pres)
-    print('Gas:', gas)
-    print('-------')
-  except OSError as e:
-    print('Failed to read sensor.')
-
-  sleep(5)
+            response = web_page(fTemp, cTemp, sPressure, sHumidity, sGas, timeNow, dateNow)
+            theSocket.respond(conn, addr, response)
+    except OSError as e:
+        print(e.message())

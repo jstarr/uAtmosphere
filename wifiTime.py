@@ -5,8 +5,10 @@
     https://www.hackster.io/alankrantas/very-simple-micropython-esp8266-esp-12-web-clock-3c5c6f
 
 '''
-import network, urequests, utime, machine
-from machine import RTC, I2C, Pin
+# import network, urequests, utime, machine
+# from machine import RTC, I2C, Pin
+from machine import RTC
+import urequests, utime
 
 class uRTC():
     '''
@@ -23,7 +25,6 @@ class uRTC():
         self.url = url
 
         self.update_time = utime.ticks_ms() - self.web_query_delay
-        self.webTimeRefresh()
 
 
     def webTimeRefresh(self):
@@ -33,9 +34,15 @@ class uRTC():
 
             # HTTP GET data
             print('Updating clock\nURL:', self.url)
-            response = urequests.get(self.url)
+            try:
+                print(f'Getting time from {self.url}')
+                response = urequests.get(self.url)
+            except Exception as e:
+                print('Error:', e.errno)
+            status_code = response.status_code
+            print(f'Status Code:{status_code}')
 
-            if response.status_code == 200: # query success
+            if status_code == 200: # query success
                 # parse JSON
                 parsed = response.json()
                 datetime_str = str(parsed["datetime"])

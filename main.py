@@ -62,4 +62,4 @@ while True:
             response = web_page(fTemp, cTemp, sPressure, sHumidity, sGas, timeNow, dateNow)
             theSocket.respond(conn, addr, response)
     except OSError as e:
-        print(e.message())
+        print(e)

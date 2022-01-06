@@ -7,6 +7,7 @@
   esp
   gc
   bme680 (all objects)
+  rtc (uRTC)
 '''
 connectTries = 10    # Number of times to try to connect to the network
 
@@ -47,12 +48,13 @@ station.active(True)
 station.connect(ssid, password)
 
 nTries = 0
+rtc = uRTC()
 while station.isconnected() == False and nTries < connectTries:
     nTries += 1
     print (f'{nTries} tries of {connectTries} failed to connect')
     sleep(1)
 if station.isconnected():
-    rtc = uRTC()
+    rtc.webTimeRefresh()
     currentTime = rtc.time()
     currentDate = rtc.date()
     address = station.ifconfig()[0]
